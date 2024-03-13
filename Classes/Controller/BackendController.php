@@ -21,6 +21,8 @@ use TYPO3\CMS\Core\Resource\ResourceStorage;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Core\Core\Environment;
+use TYPO3\CMS\Core\Utility\PathUtility;
 
 class BackendController extends ActionController
 {
@@ -82,17 +84,27 @@ class BackendController extends ActionController
             $storages = $storageRepository->findAll();
 
             $mailAttachements = [];
-            $attachements = explode(',', $jsonMail['attachements']);
+            $attachements = [];
+            if( !empty($jsonMail['attachements']) ){
+            	$attachements = explode(',', $jsonMail['attachements']);
+            }
             foreach ($attachements as $attachement) {
                 $fileName = $attachement;
                 $resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
+
+                $publicPath = Environment::getPublicPath() . "/";
 
                 // cleanup filepaths to find file object
                 /** @var ResourceStorage $storage */
                 foreach ($storages as $storage) {
                     $storageRecord = $storage->getStorageRecord();
                     $configuration = $storage->getConfiguration();
-                    $fileName = str_replace($configuration['basePath'], $storageRecord['uid'].':', $fileName);
+
+                    $basePath = $configuration['basePath'];
+                    if( $configuration['pathType'] == 'relative' ){
+                    	$basePath = PathUtility::getCanonicalPath( $publicPath . $configuration['basePath'] );
+                    }
+                    $fileName = str_replace( $basePath, $storageRecord['uid'].':', $fileName);
                 }
 
                 // search file object
